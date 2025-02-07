@@ -1,9 +1,11 @@
 export function humanizeCronInChinese(cron) {
     const tokens = cron.trim().split(' ');
+
     const cronStruct = {
         time: {
+            second: null, // 新增秒
             minute: compileNode(tokens[0]),
-            hour: compileNode(tokens[1])
+            hour: compileNode(tokens[1]),
         },
         date: {
             dayInMonth: compileNode(tokens[2]),
@@ -12,13 +14,27 @@ export function humanizeCronInChinese(cron) {
         }
     };
 
+    if (tokens.length >= 6) {
+        // Quartz Cron 格式，存在秒部分
+        cronStruct.time.second = compileNode(tokens[0]);
+        cronStruct.time.minute = compileNode(tokens[1]);
+        cronStruct.time.hour = compileNode(tokens[2]);
+        cronStruct.date.dayInMonth = compileNode(tokens[3]);
+        cronStruct.date.month = compileNode(tokens[4]);
+        cronStruct.date.dayInWeek = compileNode(tokens[5]);
+    }
+
     cronStruct.date = compileDatePart(cronStruct.date);
     cronStruct.time = compileTimePart(cronStruct.time);
 
-    if (cronStruct.date.anyCount === 3 && cronStruct.time.text[0] === '每') {
+    if ((cronStruct.date.anyCount === 3 ||
+         (cronStruct.date.anyCount === 2 && cronStruct.date.dayInMonth.raw === '?' && cronStruct.date.dayInWeek.isAny && cronStruct.date.month.isAny) || 
+        (cronStruct.date.anyCount === 2 && cronStruct.date.dayInMonth.isAny && cronStruct.date.dayInWeek.raw === '?' && cronStruct.date.month.isAny)) && 
+        cronStruct.time.text[0] === '每') {
         // 避免 '每日每分钟' 出现
         cronStruct.date.text = '';
     }
+    console.log(cronStruct.date.text+"|||"+cronStruct.time.text);
 
     return cronStruct.date.text + cronStruct.time.text;
 }
@@ -35,7 +51,10 @@ function compileNode(raw) {
 
 function compileDatePart(date) {
     date.anyCount = date.month.isAny + date.dayInMonth.isAny + date.dayInWeek.isAny;
-    if (date.anyCount === 3) {
+    if (date.anyCount === 3 ||
+        (date.anyCount === 2 && date.dayInMonth.raw === '?' && date.dayInWeek.isAny && date.month.isAny) || 
+        (date.anyCount === 2 && date.dayInMonth.isAny && date.dayInWeek.raw === '?' && date.month.isAny)
+    ) {
         date.text = '每日';
     } else if (date.anyCount === 2) {
         if (date.month.isAny === false) {
@@ -69,8 +88,16 @@ function compileDatePart(date) {
 
 function compileTimePart(time) {
     time.anyCount = time.hour.isAny + time.minute.isAny;
-    if (time.anyCount === 2) {
+    if (time.second) {
+        // Quartz Cron 格式，存在秒部分
+        time.anyCount = time.hour.isAny + time.minute.isAny + time.second.isAny;
+    }
+    if (time.anyCount === 2 && time.second && time.second.raw === '0') {
         time.text = '每分钟';
+    } else if (time.anyCount === 2 && !time.second) {
+        time.text = '每分钟';
+    } else if (time.anyCount === 3) {// 秒判斷
+        time.text = '每秒钟';
     } else if (time.anyCount === 1) {
         if (time.hour.isAny) {
             if (time.minute.hasStepping) {
@@ -83,6 +110,19 @@ function compileTimePart(time) {
             } else {
                 time.text = '每小时的第' + time.minute.raw + '分钟';
             }
+            // 秒判斷
+            if (time.second) {
+                if (time.second.hasStepping) {
+                    const parts = time.second.raw.split('/');
+                    if (time.second.hasRange || time.second.hasList) {
+                        time.text += ' 第' + parts[0] + '秒(间隔' + parts[1] + '秒)';
+                    } else {
+                        time.text += ' 每隔' + time.second.raw.split('/')[1] + '分钟';
+                    }
+                } else {
+                    time.text += ' 第' + time.second.raw + '秒';
+                }
+            }
         } else {
             if (time.hour.hasStepping) {
                 const parts = time.hour.raw.split('/');
@@ -94,9 +134,22 @@ function compileTimePart(time) {
             } else {
                 time.text = time.hour.raw + '时的每一分钟';
             }
+            // 秒判斷
+            if (time.second) {
+                if (time.second.hasStepping) {
+                    const parts = time.second.raw.split('/');
+                    if (time.second.hasRange || time.second.hasList) {
+                        time.text += ' 第' + parts[0] + '秒(间隔' + parts[1] + '秒)';
+                    } else {
+                        time.text += ' 每隔' + time.second.raw.split('/')[1] + '分钟';
+                    }
+                } else {
+                    time.text += ' 第' + time.second.raw + '秒';
+                }
+            }
         }
     } else {
-        if (time.hour.hasStepping || time.minute.hasStepping) {
+        if (time.hour.hasStepping || time.minute.hasStepping || (time.second && time.second.hasStepping)) {
             let hourString;
             if (time.hour.hasStepping) {
                 const parts = time.hour.raw.split('/');
@@ -121,7 +174,24 @@ function compileTimePart(time) {
                 minuteString = '第' + time.minute.raw + '分钟';
             }
 
+            let secondString;
+            if(time.second){
+                if (time.second.hasStepping) {
+                    const parts = time.second.raw.split('/');
+                    if (time.second.hasRange || time.second.hasList) {
+                        secondString = '第' + parts[0] + '秒(间隔' + parts[1] + '秒)';
+                    } else {
+                        secondString = '每' + parts[1] + '秒';
+                    }
+                } else {
+                    secondString = '第' + time.second.raw + '秒';
+                }
+            }
+            
             time.text = hourString + '的' + minuteString;
+            if(time.second){
+                time.text +=  '的' + secondString;
+            }
             return time;
         }
 
@@ -140,6 +210,24 @@ function compileTimePart(time) {
             }
         } else {
             time.text = time.hour.raw + '时的第' + time.minute.raw + '分钟';
+        }
+        if(time.second){
+            if (!time.minute.hasList && !time.minute.hasRange) {
+                if (!time.second.hasList) {
+                    if (time.second.hasRange) {
+                        // XX:XX - XX:YY
+                        const secondRange = time.second.raw.split('-');
+                        time.text = time.minute.raw.padStart(2, '0') + ':' + secondRange[0].padStart(2, '0') + '-' + time.minute.raw.padStart(2, '0') + ':' + secondRange[1].padStart(2, '0');
+                    } else {
+                        // XX:XX
+                        time.text = time.minute.raw.padStart(2, '0') + ':' + time.second.raw.padStart(2, '0');
+                    }
+                } else {
+                    time.text += time.minute.raw + '分鐘的第' + time.second.raw + '秒';
+                }
+            } else {
+                time.text += time.minute.raw + '分鐘的第' + time.second.raw + '秒';
+            }
         }
     }
 

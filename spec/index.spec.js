@@ -52,4 +52,10 @@ describe('cron translation tests', function () {
     it('month name range', function () {
         expect(humanizeCronInChinese('23 12 * JAN-feb *')).toBe('1-2月每日12:23');
     });
+    it('every second', function () {
+        expect(humanizeCronInChinese('* * * ? * * *')).toBe('每秒钟');
+    });
+    it('0,2,3 * * ? * * *', function () {
+        expect(humanizeCronInChinese('0,2,3 * * ? * * *')).toBe('123');
+    });
 });
