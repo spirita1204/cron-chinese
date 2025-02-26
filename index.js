@@ -120,15 +120,147 @@ function compileTimePart(time) {
     } else if (time.anyCount === 1) {
         // x x *
         if(time.hour.isAny) {
-            
+            if (time.minute.hasStepping || time.second.hasStepping) {
+                let minuteString;
+                if (time.minute.hasStepping) {
+                    const parts = time.minute.raw.split('/');
+                    if (time.minute.hasList || time.minute.hasRange) {
+                        minuteString = parts[0] + '分鐘(间隔' + parts[1] + '分鐘)';
+                    } else {
+                        minuteString = '每' + parts[1] + '分钟';
+                    }
+                } else {
+                    minuteString = time.minute.raw + '分';
+                }
+    
+                let secondString;
+                if (time.second.hasStepping) {
+                    const parts = time.second.raw.split('/');
+                    if (time.second.hasRange || time.second.hasList) {
+                        secondString = '第' + parts[0] + '秒(间隔' + parts[1] + '秒)';
+                    } else {
+                        secondString = '每' + parts[1] + '秒';
+                    }
+                } else {
+                    secondString = '第' + time.second.raw + '秒';
+                }
+    
+                time.text = minuteString + '的' + secondString;
+                return time;
+            }
+
+            if (!time.minute.hasList && !time.minute.hasRange) {
+                if (!time.second.hasList) { 
+                    if (time.second.hasRange) {
+                        // XX:XX - XX:YY
+                        const secondRange = time.second.raw.split('-');
+                        time.text = time.minute.raw.padStart(2, '0') + ':' + secondRange[0].padStart(2, '0') + '-' + time.minute.raw.padStart(2, '0') + ':' + secondRange[1].padStart(2, '0');
+                    } else {
+                        // XX:XX
+                        time.text = time.minute.raw.padStart(2, '0') + ':' + time.second.raw.padStart(2, '0');
+                    }
+                } else {
+                    time.text = time.minute.raw + '分鐘的第' + time.second.raw + '秒鐘';
+                }
+            } else {
+                time.text = time.minute.raw + '分鐘的第' + time.second.raw + '秒鐘';
+            }
         } 
         // x * x
         else if(time.minute.isAny) {
-        
+            if (time.hour.hasStepping || time.second.hasStepping) {
+                let hourString;
+                if (time.hour.hasStepping) {
+                    const parts = time.hour.raw.split('/');
+                    if (time.hour.hasList || time.hour.hasRange) {
+                        hourString = parts[0] + '時(间隔' + parts[1] + '小時)';
+                    } else {
+                        hourString = '每' + parts[1] + '小時';
+                    }
+                } else {
+                    hourString = time.hour.raw + '小時';
+                }
+    
+                let secondString;
+                if (time.second.hasStepping) {
+                    const parts = time.second.raw.split('/');
+                    if (time.second.hasRange || time.second.hasList) {
+                        secondString = '第' + parts[0] + '秒(间隔' + parts[1] + '秒)';
+                    } else {
+                        secondString = '每' + parts[1] + '秒';
+                    }
+                } else {
+                    secondString = '第' + time.second.raw + '秒';
+                }
+    
+                time.text = minuteString + '的' + secondString;
+                return time;
+            }
+
+            if (!time.hour.hasList && !time.hour.hasRange) {
+                if (!time.second.hasList) { 
+                    if (time.second.hasRange) {
+                        // XX:XX - XX:YY TODO 
+                        const secondRange = time.second.raw.split('-');
+                        time.text = time.hour.raw.padStart(2, '0') + ':' + secondRange[0].padStart(2, '0') + '-' + time.hour.raw.padStart(2, '0') + ':' + secondRange[1].padStart(2, '0');
+                    } else {
+                        // XX:XX
+                        time.text = time.hour.raw.padStart(2, '0') + ':' + time.second.raw.padStart(2, '0');
+                    }
+                } else {
+                    time.text = time.hour.raw + '小時的第' + time.second.raw + '秒鐘';
+                }
+            } else {
+                time.text = time.hour.raw + '小時的第' + time.second.raw + '秒鐘';
+            }
         } 
         // * x x
         else {
-        
+            if (time.hour.hasStepping || time.minute.hasStepping) {
+                let hourString;
+                if (time.hour.hasStepping) {
+                    const parts = time.hour.raw.split('/');
+                    if (time.hour.hasList || time.hour.hasRange) {
+                        hourString = parts[0] + '时(间隔' + parts[1] + '小时)';
+                    } else {
+                        hourString = '每' + parts[1] + '小时';
+                    }
+                } else {
+                    hourString = time.hour.raw + '时';
+                }
+    
+                let minuteString;
+                if (time.minute.hasStepping) {
+                    const parts = time.minute.raw.split('/');
+                    if (time.minute.hasRange || time.minute.hasList) {
+                        minuteString = '第' + parts[0] + '分钟(间隔' + parts[1] + '分钟)';
+                    } else {
+                        minuteString = '每' + parts[1] + '分钟';
+                    }
+                } else {
+                    minuteString = '第' + time.minute.raw + '分钟';
+                }
+    
+                time.text = hourString + '的' + minuteString;
+                return time;
+            }
+    
+            if (!time.hour.hasList && !time.hour.hasRange) {
+                if (!time.minute.hasList) {
+                    if (time.minute.hasRange) {
+                        // XX:XX - XX:YY
+                        const minuteRange = time.minute.raw.split('-');
+                        time.text = time.hour.raw.padStart(2, '0') + ':' + minuteRange[0].padStart(2, '0') + '-' + time.hour.raw.padStart(2, '0') + ':' + minuteRange[1].padStart(2, '0');
+                    } else {
+                        // XX:XX
+                        time.text = time.hour.raw.padStart(2, '0') + ':' + time.minute.raw.padStart(2, '0');
+                    }
+                } else {
+                    time.text = time.hour.raw + '时的第' + time.minute.raw + '分钟';
+                }
+            } else {
+                time.text = time.hour.raw + '时的第' + time.minute.raw + '分钟';
+            }
         }
     } else {// 
         if (time.hour.hasStepping || time.minute.hasStepping) {
