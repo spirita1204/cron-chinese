@@ -2,13 +2,14 @@ export function humanizeCronInChinese(cron) {
     const tokens = cron.trim().split(' ');
     const cronStruct = {
         time: {
-            minute: compileNode(tokens[0]),
-            hour: compileNode(tokens[1])
+            second: compileNode(tokens[0]), // 新增秒
+            minute: compileNode(tokens[1]),
+            hour: compileNode(tokens[2])
         },
         date: {
-            dayInMonth: compileNode(tokens[2]),
-            month: compileNode(tokens[3]),
-            dayInWeek: compileNode(tokens[4])
+            dayInMonth: compileNode(tokens[3]),
+            month: compileNode(tokens[4]),
+            dayInWeek: compileNode(tokens[5])
         }
     };
 
@@ -68,34 +69,68 @@ function compileDatePart(date) {
 }
 
 function compileTimePart(time) {
-    time.anyCount = time.hour.isAny + time.minute.isAny;
-    if (time.anyCount === 2) {
-        time.text = '每分钟';
-    } else if (time.anyCount === 1) {
-        if (time.hour.isAny) {
-            if (time.minute.hasStepping) {
-                const parts = time.minute.raw.split('/');
-                if (time.minute.hasRange || time.minute.hasList) {
-                    time.text = '每小时的第' + parts[0] + '分钟(间隔' + parts[1] + '分钟)';
-                } else {
-                    time.text = '每隔' + time.minute.raw.split('/')[1] + '分钟';
+    time.anyCount = time.hour.isAny + time.minute.isAny + time.second.isAny;
+    if (time.anyCount === 3) {
+        time.text = '每秒钟';
+    } else if (time.anyCount === 2) {
+        if(time.hour.isAny) {
+            if(time.minute.isAny) {
+                if(time.second.raw == '0') {// 0 * *
+                    time.text = '每分鐘';
+                    return;
                 }
-            } else {
-                time.text = '每小时的第' + time.minute.raw + '分钟';
+                if (time.second.hasStepping) {
+                    const parts = time.second.raw.split('/');
+                    if (time.second.hasRange || time.second.hasList) {
+                        time.text = '每分钟的第' + parts[0] + '秒(间隔' + parts[1] + '秒钟)';
+                    } else {
+                        time.text = '每隔' + time.second.raw.split('/')[1] + '秒钟';
+                    }
+                } else {
+                    time.text = '每分钟的第' + time.second.raw + '秒钟'
+                }
+            } else { // hour second 都為任意
+                if(time.minute.raw == '0') {// * 0 *
+                    time.text = '每小時的整點 每秒钟';
+                    return;
+                }
+                if (time.minute.hasStepping) {
+                    const parts = time.minute.raw.split('/');
+                    if (time.minute.hasRange || time.minute.hasList) {
+                        time.text = '每小时的第' + parts[0] + '分钟(间隔' + parts[1] + '分钟)';
+                    } else {
+                        time.text = '每隔' + time.minute.raw.split('/')[1] + '分钟';
+                    }
+                } else {
+                    time.text = '每小时的第' + time.minute.raw + '分钟'
+                } 
             }
-        } else {
+        } else {// minute second 都為任意 * * x
             if (time.hour.hasStepping) {
                 const parts = time.hour.raw.split('/');
                 if (time.hour.hasRange || time.hour.hasList) {
-                    time.text = parts[0] + '时的每一分钟(间隔' + parts[1] + '小时)';
+                    time.text = parts[0] + '时的每一秒秒钟(间隔' + parts[1] + '小时)';
                 } else {
-                    time.text = '每隔' + time.minute.raw.split('/')[1] + '分钟';
+                    time.text = '每隔' + time.minute.raw.split('/')[1] + '秒钟';
                 }
             } else {
-                time.text = time.hour.raw + '时的每一分钟';
+                time.text = time.hour.raw + '时的每一秒钟';
             }
         }
-    } else {
+    } else if (time.anyCount === 1) {
+        // x x *
+        if(time.hour.isAny) {
+            
+        } 
+        // x * x
+        else if(time.minute.isAny) {
+        
+        } 
+        // * x x
+        else {
+        
+        }
+    } else {// 
         if (time.hour.hasStepping || time.minute.hasStepping) {
             let hourString;
             if (time.hour.hasStepping) {
